@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'services/payment_provider.dart';
 import 'widgets/app_theme.dart';
 import 'screens/dashboard_screen.dart';
@@ -8,6 +10,11 @@ import 'screens/add_payment_screen.dart';
 import 'screens/reminders_screen.dart';
 
 void main() {
+  // Initialize FFI for desktop platforms (Windows, Linux, macOS)
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
   runApp(const EsewaApp());
 }
 
