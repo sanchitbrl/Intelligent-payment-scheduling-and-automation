@@ -1,20 +1,17 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'services/auth_provider.dart';
 import 'services/payment_provider.dart';
 import 'widgets/app_theme.dart';
+import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/add_payment_screen.dart';
 import 'screens/reminders_screen.dart';
+import 'screens/history_screen.dart';
 
 void main() {
-  // Initialize FFI for desktop platforms (Windows, Linux, macOS)
-  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
-  }
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const EsewaApp());
 }
 
@@ -23,14 +20,41 @@ class EsewaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => PaymentProvider()..load(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..checkAuth()),
+        ChangeNotifierProvider(create: (_) => PaymentProvider()),
+      ],
       child: MaterialApp(
         title: 'eSewa Scheduler',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.theme,
-        home: const MainShell(),
+        home: const AuthGate(),
       ),
+    );
+  }
+}
+
+/// Routes to LoginScreen or MainShell based on auth state
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        if (auth.isLoading) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.green),
+            ),
+          );
+        }
+        if (!auth.isAuthenticated) {
+          return const LoginScreen();
+        }
+        return const MainShell();
+      },
     );
   }
 }
@@ -48,10 +72,20 @@ class _MainShellState extends State<MainShell> {
   final _screens = const [
     DashboardScreen(),
     ScheduleScreen(),
+    HistoryScreen(),
     RemindersScreen(),
   ];
 
-  final _titles = const ['Dashboard', 'Scheduled', 'Reminders'];
+  final _titles = const ['Dashboard', 'Scheduled', 'History', 'Reminders'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load payments when main shell is shown (user is authenticated)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PaymentProvider>().load();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +103,7 @@ class _MainShellState extends State<MainShell> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.notifications_outlined),
-                    onPressed: () => setState(() => _index = 2),
+                    onPressed: () => setState(() => _index = 3),
                   ),
                   if (count > 0)
                     Positioned(
@@ -98,6 +132,34 @@ class _MainShellState extends State<MainShell> {
               );
             },
           ),
+          // Logout button
+          IconButton(
+            icon: const Icon(Icons.logout_outlined),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Sign out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(80, 36)),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        context.read<AuthProvider>().logout();
+                      },
+                      child: const Text('Sign out'),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ],
       ),
       body: IndexedStack(index: _index, children: _screens),
@@ -119,6 +181,11 @@ class _MainShellState extends State<MainShell> {
               icon: Icon(Icons.calendar_today_outlined),
               activeIcon: Icon(Icons.calendar_today),
               label: 'Schedule',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.history_outlined),
+              activeIcon: Icon(Icons.history),
+              label: 'History',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.notifications_outlined),

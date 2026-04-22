@@ -28,6 +28,8 @@ extension PaymentFrequencyExt on PaymentFrequency {
         return 90;
     }
   }
+
+  String get value => name; // e.g. 'daily', 'monthly'
 }
 
 extension PaymentCategoryExt on PaymentCategory {
@@ -64,6 +66,8 @@ extension PaymentCategoryExt on PaymentCategory {
         return 'O';
     }
   }
+
+  String get value => name; // e.g. 'utility', 'loan'
 }
 
 class Payment {
@@ -126,33 +130,42 @@ class Payment {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  /// Convert to JSON for API requests
+  Map<String, dynamic> toJson() {
     return {
       if (id != null) 'id': id,
       'name': name,
       'amount': amount,
       'recipient': recipient,
-      'category': category.index,
-      'frequency': frequency.index,
-      'next_due_date': nextDueDate.toIso8601String(),
-      'remind_days_before': remindDaysBefore,
-      'is_active': isActive ? 1 : 0,
-      'created_at': createdAt.toIso8601String(),
+      'category': category.value,
+      'frequency': frequency.value,
+      'nextDueDate': nextDueDate.toIso8601String(),
+      'remindDaysBefore': remindDaysBefore,
+      'isActive': isActive,
     };
   }
 
-  factory Payment.fromMap(Map<String, dynamic> map) {
+  /// Parse from API JSON response
+  factory Payment.fromJson(Map<String, dynamic> json) {
     return Payment(
-      id: map['id'],
-      name: map['name'],
-      amount: (map['amount'] as num).toDouble(),
-      recipient: map['recipient'],
-      category: PaymentCategory.values[map['category'] as int],
-      frequency: PaymentFrequency.values[map['frequency'] as int],
-      nextDueDate: DateTime.parse(map['next_due_date']),
-      remindDaysBefore: map['remind_days_before'] as int,
-      isActive: (map['is_active'] as int) == 1,
-      createdAt: DateTime.parse(map['created_at']),
+      id: json['id'],
+      name: json['name'],
+      amount: (json['amount'] as num).toDouble(),
+      recipient: json['recipient'],
+      category: PaymentCategory.values.firstWhere(
+        (c) => c.name == json['category'],
+        orElse: () => PaymentCategory.other,
+      ),
+      frequency: PaymentFrequency.values.firstWhere(
+        (f) => f.name == json['frequency'],
+        orElse: () => PaymentFrequency.monthly,
+      ),
+      nextDueDate: DateTime.parse(json['nextDueDate']),
+      remindDaysBefore: json['remindDaysBefore'] as int? ?? 3,
+      isActive: json['isActive'] as bool? ?? true,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
     );
   }
 }

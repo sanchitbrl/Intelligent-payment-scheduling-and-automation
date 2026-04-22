@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  payments  Payment[]
+
+  @@map("users")
+}
+
+enum PaymentCategory {
+  utility
+  subscription
+  education
+  loan
+  insurance
+  other
+}
+
+enum PaymentFrequency {
+  daily
+  weekly
+  monthly
+  quarterly
+}
+
+model Payment {
+  id               Int              @id @default(autoincrement())
+  userId           Int              @map("user_id")
+  name             String
+  amount           Float
+  recipient        String
+  category         PaymentCategory
+  frequency        PaymentFrequency
+  nextDueDate      DateTime         @map("next_due_date")
+  remindDaysBefore Int              @default(3) @map("remind_days_before")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history PaymentHistory[]
+
+  @@map("payments")
+}
+
+model PaymentHistory {
+  id        Int      @id @default(autoincrement())
+  paymentId Int      @map("payment_id")
+  amount    Float
+  paidAt    DateTime @default(now()) @map("paid_at")
+  status    String   // 'paid' or 'skipped'
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("payment_history")
+}
