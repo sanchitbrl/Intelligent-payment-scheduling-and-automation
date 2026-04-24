@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // For Android emulator use 10.0.2.2, for physical device use your PC's IP
-  static const String _baseUrl = 'http://192.168.0.105:3000/api';
+  static const String _baseUrl = 'http://192.168.0.102:3000/api';
 
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
