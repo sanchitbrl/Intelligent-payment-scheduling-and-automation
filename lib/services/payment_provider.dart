@@ -7,14 +7,18 @@ class PaymentProvider extends ChangeNotifier {
 
   List<Payment> _payments = [];
   Map<String, dynamic> _summary = {};
+  List<dynamic> _suggestions = [];
   bool _isLoading = false;
+  bool _suggestionsLoading = false;
   String? _error;
 
   List<Payment> get payments => _payments;
   List<Payment> get activePayments =>
       _payments.where((p) => p.isActive).toList();
   Map<String, dynamic> get summary => _summary;
+  List<dynamic> get suggestions => _suggestions;
   bool get isLoading => _isLoading;
+  bool get suggestionsLoading => _suggestionsLoading;
   String? get error => _error;
 
   Future<void> load() async {
@@ -98,5 +102,22 @@ class PaymentProvider extends ChangeNotifier {
       _error = 'Failed to skip payment.';
       notifyListeners();
     }
+  }
+
+  // ─── AI Suggestions ───
+
+  Future<void> fetchSuggestions() async {
+    _suggestionsLoading = true;
+    notifyListeners();
+
+    try {
+      _suggestions = await _api.getSuggestions();
+    } catch (e) {
+      debugPrint('Error fetching AI suggestions: $e');
+      _suggestions = [];
+    }
+
+    _suggestionsLoading = false;
+    notifyListeners();
   }
 }

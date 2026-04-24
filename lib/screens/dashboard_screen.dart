@@ -137,6 +137,10 @@ class DashboardScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
 
+                // AI Suggestions section
+                _AiSuggestionsSection(provider: provider),
+                const SizedBox(height: 16),
+
                 // Payments list
                 const Text(
                   'Upcoming payments',
@@ -295,6 +299,252 @@ class _SummaryCard extends StatelessWidget {
                     fontSize: 10, color: AppColors.textSecondary)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AiSuggestionsSection extends StatefulWidget {
+  final PaymentProvider provider;
+  const _AiSuggestionsSection({required this.provider});
+
+  @override
+  State<_AiSuggestionsSection> createState() => _AiSuggestionsSectionState();
+}
+
+class _AiSuggestionsSectionState extends State<_AiSuggestionsSection> {
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-fetch suggestions on first load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_loaded) {
+        _loaded = true;
+        widget.provider.fetchSuggestions();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final suggestions = widget.provider.suggestions;
+    final loading = widget.provider.suggestionsLoading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                size: 16,
+                color: Color(0xFF7C3AED),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'AI Insights',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => widget.provider.fetchSuggestions(),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      loading ? Icons.hourglass_top : Icons.refresh,
+                      size: 12,
+                      color: const Color(0xFF7C3AED),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      loading ? 'Analyzing...' : 'Refresh',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF7C3AED),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (loading && suggestions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: const Center(
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF7C3AED),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Analyzing your payment patterns...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else if (suggestions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.divider),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.lightbulb_outline,
+                    size: 18,
+                    color: AppColors.info,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Pay or skip a few bills to unlock AI-powered scheduling suggestions.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...suggestions.map((s) => _buildSuggestionCard(s)),
+      ],
+    );
+  }
+
+  Widget _buildSuggestionCard(dynamic suggestion) {
+    final name = suggestion['name'] ?? 'Unknown';
+    final amount = (suggestion['amount'] as num?)?.toDouble() ?? 0;
+    final suggestedDay = suggestion['suggestedDay'] ?? 0;
+    final fmt = NumberFormat('#,###');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF7C3AED).withValues(alpha: 0.15),
+                  const Color(0xFF7C3AED).withValues(alpha: 0.05),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.lightbulb,
+                size: 20,
+                color: Color(0xFF7C3AED),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Rs ${fmt.format(amount)} · Day $suggestedDay each month',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF7C3AED).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              'Automate',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF7C3AED),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

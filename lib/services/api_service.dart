@@ -176,4 +176,17 @@ class ApiService {
     }
     throw Exception('Failed to skip payment');
   }
+
+  // ─── AI Suggestions API ───
+
+  Future<List<dynamic>> getSuggestions() async {
+    final response = await http.get(
+      Uri.parse('$_baseUrl/payments/suggestions'),
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List;
+    }
+    throw Exception('Failed to load AI suggestions');
+  }
 }

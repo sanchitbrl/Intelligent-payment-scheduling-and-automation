@@ -11,6 +11,7 @@ const {
   deletePayment,
   markPaid,
   skipPayment,
+  getSuggestions,
 } = require('../controllers/paymentController');
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.get('/', getAllPayments);
 router.get('/upcoming', getUpcoming);
 router.get('/summary', getSummary);
 router.get('/history', getHistory);
+router.get('/suggestions', getSuggestions);
 
 // POST create
 router.post(

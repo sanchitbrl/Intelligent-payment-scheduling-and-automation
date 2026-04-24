@@ -238,6 +238,65 @@ async function skipPayment(req, res) {
   }
 }
 
+// GET /api/payments/suggestions — AI-powered pattern detection
+async function getSuggestions(req, res) {
+  try {
+    // 1. Fetch history for this user
+    const history = await prisma.paymentHistory.findMany({
+      where: { payment: { userId: req.userId } },
+      include: { payment: true },
+      orderBy: { paidAt: 'desc' },
+    });
+
+    // 2. Group history by payment name
+    const groups = history.reduce((acc, item) => {
+      const key = item.payment.name;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(item);
+      return acc;
+    }, {});
+
+    const suggestions = [];
+
+    // 3. AI Heuristic: detect recurring patterns
+    for (const name in groups) {
+      const txns = groups[name];
+
+      // Need at least 2 payments to detect a pattern
+      if (txns.length >= 2) {
+        const daysOfMonth = txns.map(t => new Date(t.paidAt).getDate());
+
+        // Calculate average day of month
+        const avgDay = Math.round(
+          daysOfMonth.reduce((a, b) => a + b, 0) / daysOfMonth.length
+        );
+
+        // Check consistency: all payments within ±3 days of average
+        const isConsistent = daysOfMonth.every(
+          day => Math.abs(day - avgDay) <= 3
+        );
+
+        if (isConsistent) {
+          suggestions.push({
+            name: name,
+            suggestedDay: avgDay,
+            amount: txns[0].amount,
+            category: txns[0].payment.category,
+            frequency: txns[0].payment.frequency,
+            paymentCount: txns.length,
+            message: `You pay "${name}" around day ${avgDay} every month. Automate it?`,
+          });
+        }
+      }
+    }
+
+    res.json(suggestions);
+  } catch (err) {
+    console.error('Suggestions error:', err);
+    res.status(500).json({ error: 'Failed to analyze payment patterns.' });
+  }
+}
+
 module.exports = {
   getAllPayments,
   getUpcoming,
@@ -248,4 +307,5 @@ module.exports = {
   deletePayment,
   markPaid,
   skipPayment,
+  getSuggestions,
 };
